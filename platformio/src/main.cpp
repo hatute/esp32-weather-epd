@@ -37,7 +37,7 @@
 #if defined(SENSOR_BME680)
   #include <Adafruit_BME680.h>
 #endif
-#if defined(USE_HTTPS_WITH_CERT_VERIF) || defined(USE_HTTPS_WITH_CERT_VERIF)
+#if defined(USE_HTTPS_NO_CERT_VERIF) || defined(USE_HTTPS_WITH_CERT_VERIF)
   #include <WiFiClientSecure.h>
 #endif
 #ifdef USE_HTTPS_WITH_CERT_VERIF
@@ -49,6 +49,40 @@ static owm_resp_onecall_t       owm_onecall;
 static owm_resp_air_pollution_t owm_air_pollution;
 
 Preferences prefs;
+
+#ifndef TEMP_WHITE_CLEAR_REFRESHES
+  #define TEMP_WHITE_CLEAR_REFRESHES 0
+#endif
+
+void beginDeepSleep(unsigned long startTime, tm *timeInfo);
+
+void resetFailureCount()
+{
+  prefs.begin(NVS_NAMESPACE, false);
+  prefs.putUInt("failCount", 0);
+  prefs.end();
+}
+
+void beginFailureSleep(unsigned long startTime, tm *timeInfo)
+{
+  prefs.begin(NVS_NAMESPACE, false);
+  uint32_t failureCount = prefs.getUInt("failCount", 0) + 1;
+  prefs.putUInt("failCount", failureCount);
+  prefs.end();
+
+  if (failureCount >= static_cast<uint32_t>(FAILURE_BACKOFF_AFTER))
+  {
+    uint64_t sleepDuration = FAILURE_BACKOFF_SLEEP_INTERVAL * 60ULL;
+    esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
+    Serial.print(TXT_AWAKE_FOR);
+    Serial.println(" "  + String((millis() - startTime) / 1000.0, 3) + "s");
+    Serial.print(TXT_ENTERING_DEEP_SLEEP_FOR);
+    Serial.println(" " + String(sleepDuration) + "s");
+    esp_deep_sleep_start();
+  }
+
+  beginDeepSleep(startTime, timeInfo);
+}
 
 /* Put esp32 into ultra low-power deep sleep (<11μA).
  * Aligns wake time to the minute. Sleep times defined in config.cpp.
@@ -129,6 +163,25 @@ void setup()
 {
   unsigned long startTime = millis();
   Serial.begin(115200);
+
+#if TEMP_WHITE_CLEAR_REFRESHES > 0
+  disableBuiltinLED();
+  Serial.println("Starting temporary e-paper white clear cycle...");
+  for (int i = 0; i < TEMP_WHITE_CLEAR_REFRESHES; ++i)
+  {
+    Serial.println("White refresh " + String(i + 1) + " of "
+                   + String(TEMP_WHITE_CLEAR_REFRESHES));
+    initDisplay();
+    do
+    {
+      display.fillScreen(GxEPD_WHITE);
+    } while (display.nextPage());
+    powerOffDisplay();
+    delay(5000);
+  }
+  Serial.println("White clear cycle complete. Entering deep sleep.");
+  esp_deep_sleep_start();
+#endif
 
 #if DEBUG_LEVEL >= 1
   printHeapUsage();
@@ -230,7 +283,7 @@ void setup()
       } while (display.nextPage());
     }
     powerOffDisplay();
-    beginDeepSleep(startTime, &timeInfo);
+    beginFailureSleep(startTime, &timeInfo);
   }
 
   // TIME SYNCHRONIZATION
@@ -246,7 +299,7 @@ void setup()
       drawError(wi_time_4_196x196, TXT_TIME_SYNCHRONIZATION_FAILED);
     } while (display.nextPage());
     powerOffDisplay();
-    beginDeepSleep(startTime, &timeInfo);
+    beginFailureSleep(startTime, &timeInfo);
   }
 
   // MAKE API REQUESTS
@@ -271,7 +324,7 @@ void setup()
       drawError(wi_cloud_down_196x196, statusStr, tmpStr);
     } while (display.nextPage());
     powerOffDisplay();
-    beginDeepSleep(startTime, &timeInfo);
+    beginFailureSleep(startTime, &timeInfo);
   }
   rxStatus = getOWMairpollution(client, owm_air_pollution);
   if (rxStatus != HTTP_CODE_OK)
@@ -285,8 +338,9 @@ void setup()
       drawError(wi_cloud_down_196x196, statusStr, tmpStr);
     } while (display.nextPage());
     powerOffDisplay();
-    beginDeepSleep(startTime, &timeInfo);
+    beginFailureSleep(startTime, &timeInfo);
   }
+  resetFailureCount();
   killWiFi(); // WiFi no longer needed
 
   // GET INDOOR TEMPERATURE AND HUMIDITY, start BMEx80...
@@ -367,4 +421,3 @@ void setup()
 void loop()
 {
 } // end loop
-

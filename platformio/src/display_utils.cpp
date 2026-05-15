@@ -49,7 +49,8 @@ uint32_t readBatteryVoltage()
   // 11db attenuation, which gives it a measurable input voltage range of 150mV
   // to 2450mV.
   val_type = esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_11db,
-                                      ADC_WIDTH_BIT_12, 1100, &adc_chars);
+                                      ADC_WIDTH_BIT_12, ADC_DEFAULT_VREF_MV,
+                                      &adc_chars);
 
 #if DEBUG_LEVEL >= 1
   if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF)
@@ -67,9 +68,8 @@ uint32_t readBatteryVoltage()
 #endif
 
   uint32_t batteryVoltage = esp_adc_cal_raw_to_voltage(adc_val, &adc_chars);
-  // DFRobot FireBeetle Esp32-E V1.0 voltage divider (1M+1M), so readings are
-  // multiplied by 2.
-  batteryVoltage *= 2;
+  batteryVoltage = static_cast<uint32_t>(
+      std::round(batteryVoltage * BATTERY_VOLTAGE_MULTIPLIER));
   return batteryVoltage;
 } // end readBatteryVoltage
 

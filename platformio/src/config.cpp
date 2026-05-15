@@ -15,8 +15,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include <Arduino.h>
 #include "config.h"
+#include <Arduino.h>
+
+#if __has_include("secrets.h")
+  #include "secrets.h"
+#else
+  #error Copy include/secrets.example.h to include/secrets.h and fill in your private settings.
+#endif
 
 // PINS
 // The configuration below is intended for use with the project's official 
@@ -44,8 +50,8 @@ const uint8_t PIN_BME_PWR =  4;   // Irrelevant if directly connected to 3.3V
 const uint8_t BME_ADDRESS = 0x76; // 0x76 if SDO -> GND; 0x77 if SDO -> VCC
 
 // WIFI
-const char *WIFI_SSID     = "ssid";
-const char *WIFI_PASSWORD = "password";
+const char *WIFI_SSID = SECRET_WIFI_SSID;
+const char *WIFI_PASSWORD = SECRET_WIFI_PASSWORD;
 const unsigned long WIFI_TIMEOUT = 10000; // ms, WiFi connection timeout.
 
 // HTTP
@@ -58,7 +64,7 @@ const unsigned HTTP_CLIENT_TCP_TIMEOUT = 10000; // ms
 
 // OPENWEATHERMAP API
 // OpenWeatherMap API key, https://openweathermap.org/
-const String OWM_APIKEY   = "abcdefghijklmnopqrstuvwxyz012345";
+const String OWM_APIKEY = SECRET_OWM_APIKEY;
 const String OWM_ENDPOINT = "api.openweathermap.org";
 // OpenWeatherMap One Call 2.5 API is deprecated for all new free users
 // (accounts created after Summer 2022).
@@ -79,25 +85,25 @@ const String OWM_ONECALL_VERSION = "3.0";
 // LOCATION
 // Set your latitude and longitude.
 // (used to get weather data as part of API requests to OpenWeatherMap)
-const String LAT = "40.7128";
-const String LON = "-74.0060";
+const String LAT = SECRET_LAT;
+const String LON = SECRET_LON;
 // City name that will be shown in the top-right corner of the display.
-const String CITY_STRING = "New York";
+const String CITY_STRING = SECRET_CITY_STRING;
 
 // TIME
 // For list of time zones see
 // https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
-const char *TIMEZONE = "EST5EDT,M3.2.0,M11.1.0";
+const char *TIMEZONE = SECRET_TIMEZONE;
 // Time format used when displaying sunrise/set times. (Max 11 characters)
 // For more information about formatting see
 // https://man7.org/linux/man-pages/man3/strftime.3.html
 // const char *TIME_FORMAT = "%l:%M%P"; // 12-hour ex: 1:23am  11:00pm
-const char *TIME_FORMAT = "%H:%M";   // 24-hour ex: 01:23   23:00
+const char *TIME_FORMAT = "%H:%M"; // 24-hour ex: 01:23   23:00
 // Time format used when displaying axis labels. (Max 11 characters)
 // For more information about formatting see
 // https://man7.org/linux/man-pages/man3/strftime.3.html
 // const char *HOUR_FORMAT = "%l%P"; // 12-hour ex: 1am  11pm
-const char *HOUR_FORMAT = "%H";      // 24-hour ex: 01   23
+const char *HOUR_FORMAT = "%H"; // 24-hour ex: 01   23
 // Date format used when displaying date in top-right corner.
 // For more information about formatting see
 // https://man7.org/linux/man-pages/man3/strftime.3.html
@@ -121,10 +127,14 @@ const unsigned long NTP_TIMEOUT = 20000; // ms
 // Note: The OpenWeatherMap model is updated every 10 minutes, so updating more
 //       frequently than that is unnessesary.
 const int SLEEP_DURATION = 30; // minutes
+// Consecutive network/API failures before using a longer sleep interval.
+const int FAILURE_BACKOFF_AFTER = 3;
+// Longer sleep interval used after repeated network/API failures.
+const int FAILURE_BACKOFF_SLEEP_INTERVAL = 180; // minutes
 // Bed Time Power Savings.
 // If BED_TIME == WAKE_TIME, then this battery saving feature will be disabled.
 // (range: [0-23])
-const int BED_TIME  = 00; // Last update at 00:00 (midnight) until WAKE_TIME.
+const int BED_TIME = 00;  // Last update at 00:00 (midnight) until WAKE_TIME.
 const int WAKE_TIME = 06; // Hour of first update after BED_TIME, 06:00.
 // Note that the minute alignment of SLEEP_DURATION begins at WAKE_TIME even if
 // Bed Time Power Savings is disabled.
@@ -154,6 +164,9 @@ const unsigned long VERY_LOW_BATTERY_SLEEP_INTERVAL = 120; // (minutes)
 // Battery voltage calculations are based on a typical 3.7v LiPo.
 const uint32_t MAX_BATTERY_VOLTAGE = 4200; // (millivolts)
 const uint32_t MIN_BATTERY_VOLTAGE = 3000; // (millivolts)
+// DFRobot FireBeetle ESP32-E V1.0 voltage divider is 1M+1M.
+const float BATTERY_VOLTAGE_MULTIPLIER = 2.0f;
+const uint16_t ADC_DEFAULT_VREF_MV = 1100;
 
 // See config.h for the below options
 // E-PAPER PANEL
@@ -163,4 +176,3 @@ const uint32_t MIN_BATTERY_VOLTAGE = 3000; // (millivolts)
 // FONTS
 // ALERTS
 // BATTERY MONITORING
-

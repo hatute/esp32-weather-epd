@@ -100,14 +100,17 @@ void killWiFi()
  */
 bool printLocalTime(tm *timeInfo)
 {
-  int attempts = 0;
-  while (!getLocalTime(timeInfo) && attempts++ < 3)
+  for (int attempts = 0; attempts < 3; ++attempts)
   {
-    Serial.println(TXT_FAILED_TO_GET_TIME);
-    return false;
+    if (getLocalTime(timeInfo))
+    {
+      Serial.println(timeInfo, "%A, %B %d, %Y %H:%M:%S");
+      return true;
+    }
+    delay(100);
   }
-  Serial.println(timeInfo, "%A, %B %d, %Y %H:%M:%S");
-  return true;
+  Serial.println(TXT_FAILED_TO_GET_TIME);
+  return false;
 } // printLocalTime
 
 /* Waits for NTP server time sync, adjusted for the time zone specified in
@@ -289,4 +292,3 @@ void printHeapUsage() {
                  + String(ESP.getMaxAllocHeap()) + " B");
   return;
 }
-

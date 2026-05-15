@@ -20,6 +20,13 @@
 #include "api_response.h"
 #include "config.h"
 
+static DeserializationError invalidJson(const char *message)
+{
+  Serial.print("[error] Invalid OpenWeatherMap JSON: ");
+  Serial.println(message);
+  return DeserializationError(DeserializationError::InvalidInput);
+}
+
 DeserializationError deserializeOneCall(WiFiClient &json,
                                         owm_resp_onecall_t &r)
 {
@@ -59,6 +66,41 @@ DeserializationError deserializeOneCall(WiFiClient &json,
 #endif
   if (error) {
     return error;
+  }
+  if (doc.overflowed()) {
+    return DeserializationError(DeserializationError::NoMemory);
+  }
+
+  {
+    JsonObject currentObj = doc["current"];
+    JsonArray hourlyArray = doc["hourly"];
+    JsonArray dailyArray = doc["daily"];
+    JsonArray currentWeather = currentObj["weather"];
+
+    if (currentObj.isNull()) {
+      return invalidJson("missing current object");
+    }
+    if (hourlyArray.isNull() || hourlyArray.size() < OWM_NUM_HOURLY) {
+      return invalidJson("missing hourly forecast entries");
+    }
+    if (dailyArray.isNull() || dailyArray.size() < OWM_NUM_DAILY) {
+      return invalidJson("missing daily forecast entries");
+    }
+    if (currentWeather.isNull() || currentWeather.size() == 0) {
+      return invalidJson("missing current weather entry");
+    }
+    for (JsonObject hourlyObj : hourlyArray) {
+      JsonArray hourlyWeather = hourlyObj["weather"];
+      if (hourlyWeather.isNull() || hourlyWeather.size() == 0) {
+        return invalidJson("missing hourly weather entry");
+      }
+    }
+    for (JsonObject dailyObj : dailyArray) {
+      JsonArray dailyWeather = dailyObj["weather"];
+      if (dailyWeather.isNull() || dailyWeather.size() == 0) {
+        return invalidJson("missing daily weather entry");
+      }
+    }
   }
 
   r.lat             = doc["lat"]            .as<float>();
@@ -222,6 +264,19 @@ DeserializationError deserializeAirQuality(WiFiClient &json,
   if (error) {
     return error;
   }
+  if (doc.overflowed()) {
+    return DeserializationError(DeserializationError::NoMemory);
+  }
+
+  JsonArray listArray = doc["list"];
+  if (listArray.isNull() || listArray.size() < OWM_NUM_AIR_POLLUTION) {
+    return invalidJson("missing air pollution history entries");
+  }
+  for (JsonObject listObj : listArray) {
+    if (listObj["components"].isNull()) {
+      return invalidJson("missing air pollution components");
+    }
+  }
 
   r.coord.lat = doc["coord"]["lat"].as<float>();
   r.coord.lon = doc["coord"]["lon"].as<float>();
@@ -252,4 +307,3 @@ DeserializationError deserializeAirQuality(WiFiClient &json,
 
   return error;
 } // end deserializeAirQuality
-
