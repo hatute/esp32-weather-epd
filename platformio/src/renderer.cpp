@@ -821,13 +821,11 @@ void drawCurrentMoonset(const owm_daily_t &today)
 #endif
 // end drawCurrentMoonset
 
-// drawCurrentMoonphase
-#ifdef POS_MOONPHASE
-void drawCurrentMoonphase(const owm_daily_t &daily)
+void drawCurrentMoonphaseAt(const owm_daily_t &daily, int pos)
 {
   String dataStr, unitStr;
-  int PosX = (POS_MOONPHASE % 2);
-  int PosY = static_cast<int>(POS_MOONPHASE / 2);
+  int PosX = (pos % 2);
+  int PosY = static_cast<int>(pos / 2);
 
   // icons
   display.drawInvertedBitmap(162 * PosX, 204 + (48 + 8) * PosY,
@@ -863,6 +861,13 @@ void drawCurrentMoonphase(const owm_daily_t &daily)
     }
   }
 
+  return;
+}
+#ifdef POS_MOONPHASE
+// drawCurrentMoonphase
+void drawCurrentMoonphase(const owm_daily_t &daily)
+{
+  drawCurrentMoonphaseAt(daily, POS_MOONPHASE);
   return;
 }
 #endif
@@ -1001,7 +1006,14 @@ void drawCurrentConditions(const owm_current_t &current,
     # endif
 
     # ifdef POS_UVI
-      drawCurrentUVI(current);
+      if (isDay(current.weather.icon))
+      {
+        drawCurrentUVI(current);
+      }
+      else
+      {
+        drawCurrentMoonphaseAt(today, POS_UVI);
+      }
     # endif
 
     # ifdef POS_PRESSURE
@@ -1756,4 +1768,3 @@ void drawError(const uint8_t *bitmap_196x196,
                              bitmap_196x196, 196, 196, ACCENT_COLOR);
   return;
 } // end drawError
-

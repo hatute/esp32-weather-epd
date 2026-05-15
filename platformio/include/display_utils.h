@@ -64,6 +64,7 @@ int getAQI(const owm_resp_air_pollution_t &p);
 const char *getAQIdesc(int aqi);
 const char *getWiFidesc(int rssi);
 const uint8_t *getWiFiBitmap16(int rssi);
+bool isDay(String icon);
 const uint8_t *getHourlyForecastBitmap32(const owm_hourly_t &hourly,
                                          const owm_daily_t  &today);
 const uint8_t *getDailyForecastBitmap64(const owm_daily_t &daily);
@@ -82,4 +83,3 @@ const uint8_t *getMoonPhaseBitmap48(const owm_daily_t &daily);
 const char *getMoonPhaseStr(const owm_daily_t &daily);
 
 #endif
-
